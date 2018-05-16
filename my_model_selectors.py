@@ -106,4 +106,37 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        best_model = None
+        best_logL = float("-inf")
+        for n in range(self.min_n_components, self.max_n_components+1):
+            try:
+                n_splits = min(3, len(self.lengths))
+                if n_splits > 1:
+                    split_method = KFold(n_splits)
+                    totalLogL = 0
+                    folds = 0
+                    for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                        folds+=1
+                        X_train, lengths_train = combine_sequences(cv_train_idx, self.sequences)
+                        X_test, lengths_test = combine_sequences(cv_test_idx, self.sequences)
+                        hmm_model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                                random_state=self.random_state, verbose=False).fit(X_train, lengths_train)
+                        logL = hmm_model.score(X_test, lengths_test)
+                        totalLogL += logL
+
+                    avgLogL = totalLogL / folds
+                # Handle case where len(X) = 1
+                else:
+                    hmm_model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                            random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                    logL = hmm_model.score(self.X, self.lengths)
+                    avgLogL = logL
+
+                if avgLogL > best_logL:
+                    best_logL = avgLogL
+                    best_model = hmm_model
+
+            except Exception as e:
+                pass
+
+        return hmm_model
