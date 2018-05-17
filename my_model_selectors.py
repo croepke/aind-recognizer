@@ -77,7 +77,23 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        best_model = None
+        best_bic = float("inf")
+        for n in range(self.min_n_components, self.max_n_components+1):
+            try:
+                hmm_model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                logL = hmm_model.score(self.X, self.lengths)
+                p= (n * n) + (2 * n * self.X.shape[1]) - 1
+                bic = -2 * logL + p * np.log(len(self.X))
+
+                if bic < best_bic:
+                    best_bic = bic
+                    best_model = hmm_model
+            except:
+                pass
+
+        return best_model
 
 
 class SelectorDIC(ModelSelector):
@@ -94,7 +110,21 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        best_model = None
+        best_dic = float("-inf")
+        for n in range(self.min_n_components, self.max_n_components+1):
+            try:
+                hmm_model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                logL_i = hmm_model.score(self.X, self.lengths)
+                logL_sumJ = [hmm_model.score(*self.hwords[word]) for word in self.hwords if word is not self.this_word]
+                dic = logL_i - (1/float(len(self.hwords.keys())-1))*np.sum(logL_sumJ)
+                if dic > best_dic:
+                    best_dic = dic
+                    best_model = hmm_model
+            except:
+                pass
+        return best_model
 
 
 class SelectorCV(ModelSelector):
@@ -139,4 +169,4 @@ class SelectorCV(ModelSelector):
             except Exception as e:
                 pass
 
-        return hmm_model
+        return best_model
