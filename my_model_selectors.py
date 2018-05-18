@@ -138,6 +138,7 @@ class SelectorCV(ModelSelector):
         # TODO implement model selection using CV
         best_model = None
         best_logL = float("-inf")
+        best_n = float("-inf")
         for n in range(self.min_n_components, self.max_n_components+1):
             try:
                 n_splits = min(3, len(self.lengths))
@@ -165,8 +166,12 @@ class SelectorCV(ModelSelector):
                 if avgLogL > best_logL:
                     best_logL = avgLogL
                     best_model = hmm_model
+                    best_n = n
 
             except Exception as e:
                 pass
 
-        return best_model
+        if best_model is None:
+            return None
+
+        return self.base_model(best_n)
